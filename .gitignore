@@ -1,2 +1,7 @@
 .DS_Store
 /reports/
+
+# Rendered video exports and ManimGX sidecars
+/video/**/*.mp4
+/video/**/*.srt
+/video/**/*.storyboard*.png
