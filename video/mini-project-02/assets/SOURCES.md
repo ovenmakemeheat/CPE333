@@ -21,3 +21,15 @@ The last seven are 1280 px thumbnails.
 `tux/Tux-on-disc.png` is derived: `Tux-1920px.png` composited onto a light disc for contrast on the dark background. It carries the same license as its source.
 
 The CC BY-SA images need their credit kept with the video, and share-alike applies to the images themselves.
+
+## fonts/
+
+| File | Source | Licence |
+|---|---|---|
+| `LINESeedJP-Regular.ttf` | LINE Seed JP Regular, release v20260828, github.com/line/seed | SIL Open Font License 1.1, see `LINESEED_OFL.txt` |
+
+## sfx/
+
+Kenney "Interface Sounds" 1.0 (www.kenney.nl), CC0, see `sfx/KENNEY_LICENSE.txt`. No background music is bundled: add your own licensed track as `sfx/music.mp3` (or .ogg/.wav).
+
+`music.mp3` is "tiny_movement", supplied by the user; its licence is theirs to confirm.
