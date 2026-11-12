@@ -670,14 +670,14 @@ class Story(m.ThreeDScene):
         self.play(m.FadeOut(tok), run_time=beats(1))
         self.remove(trail)
         self.cap("Ours stop at the gate and are sorted: minor or major, anon or file.", 3)
-        self.board_title_to("E2 · faultgen anon:64")
+        self.board_title_to("Touch 64 MiB")
         for k in self.vals:
             self.vals[k].set_value(-1)
         self.play(wells[0][2].animate.set_value(16538), wells[1][2].animate.set_value(1), wells[2][2].animate.set_value(16462),
                   wells[3][2].animate.set_value(77), self.vals["minor"].animate.set_value(16538), self.vals["major"].animate.set_value(1),
                   run_time=beats(8))
         self.board_tick("minor", "major")
-        self.cap("E2: 16,538 minor and 1 major, exactly what getrusage() reports.", 3)
+        self.cap("16,538 minor and 1 major, exactly what getrusage() reports.", 3)
         self.cap("Lifetime totals add live and exited threads, read under a lock like /proc.", 3)
         frozen = [self.freeze(n_, lambda w=w: m.Text(f"{w[2].get_value():,.0f}", font_size=22, color=w[3]).move_to([w[4], BAND_Y - 0.15, 0]))
                   for n_, w in zip(well_nums, wells)]
@@ -773,17 +773,17 @@ class Story(m.ThreeDScene):
         self.play(m.FadeOut(self.ribbon), self.hide(self.ribbon_lab), m.FadeOut(self.key), run_time=beats(2))
         for k in self.vals:
             self.vals[k].set_value(-1)
-        self.board_title_to("E3-E6 · faultgen")
+        self.board_title_to("Same file, different reads")
         t = self.term_open([-1.0, -0.2, 0], width=8.2, rows=3)
         self.term_cmd(t, "./vm.sh make experiments")
         self.term_out(t, ["Ubuntu 24.04.5 · Linux 6.8.0-142-generic · aarch64 · Lima, 4 vCPU",
                           "page 4 KiB · THP madvise · fault_around 64 KiB · readahead 128 KiB"])
         self.play(self.term_close(t))
         rows = [  # (label, tiles, final count, unit, colour, y)
-            ("E3 cold, random", 64, 8192, "major", RED, 1.5),
-            ("E5 cold, readahead", 64, 2, "major", RED, 0.5),
-            ("E4 warm cache", 64, 652, "minor", GREEN, -0.5),
-            ("E6 THP 64 MiB", 32, 188, "minor", GOLD, -1.5),
+            ("cold, random", 64, 8192, "major", RED, 1.5),
+            ("cold, in order", 64, 2, "major", RED, 0.5),
+            ("already in RAM", 64, 652, "minor", GREEN, -0.5),
+            ("2 MB pages", 32, 188, "minor", GOLD, -1.5),
         ]
         floor, counts, labels, nums = [], [], [], []
         for lab, n, _, unit, col, y in rows:
@@ -829,11 +829,11 @@ class Story(m.ThreeDScene):
         # E1 (e1a, e1b): every number pfstat prints, beside the number Linux prints for it
         for k in self.vals:
             self.vals[k].set_value(-1)
-        self.board_title_to("E1 · pfstat vs /proc")
+        self.board_title_to("pfstat vs Linux")
         seps = [m.Line([-5.4, 1.2 - 0.75 * i - 0.38, 0], [4.6, 1.2 - 0.75 * i - 0.38, 0], color=MUTED, stroke_width=1, stroke_opacity=0.4)
                 for i in range(4)]
         self.play(*[m.ReplacementTransform(g, sp) for g, sp in zip(self.exp_floor, seps)], run_time=beats(2))
-        self.cap("E1 · left: what pfstat prints. Right: what Linux itself prints.", 2)
+        self.cap("Left: what pfstat prints. Right: what Linux itself prints.", 2)
         cols = [("", -4.2), ("sleep", -0.9), ("PID 1 (systemd)", 2.9)]
         rows = [("regions", "/proc/<pid>/maps lines", "30", "113"),
                 ("address space", "VmSize", "5.6 MB", "21.9 MB"),
@@ -859,7 +859,7 @@ class Story(m.ThreeDScene):
             self.play(*[m.FadeIn(c[1], shift=m.LEFT * 0.3) for c in cells], run_time=beats(1))  # ...Linux's lands beside it
             self.play(*[c[0].animate.set_color(GREEN) for c in cells], *[c[1].animate.set_color(GREEN) for c in cells], run_time=beats(1))
             lines.append(m.VGroup(lab, *[x for c in cells for x in c]))
-        self.cap("E1 · every number matches what Linux itself reports, for sleep and for PID 1.", 3)
+        self.cap("Every number matches what Linux itself reports, for sleep and for PID 1.", 3)
         self.play(self.hide(*head, *sub, *lines, *seps))
 
         # F3 (REPORT §7): the life of one fault inside handle_mm_fault(), and where each probe can look
@@ -948,13 +948,13 @@ class Story(m.ThreeDScene):
         self.play(*[m.FadeOut(g, shift=m.DOWN * 0.2) for g in grid], *[m.FadeOut(n_[2]) for n_ in nums], run_time=beats(2))
 
         # E8 ls: the same scope question on a smaller program
-        self.board_title_to("E8 · sh + ls")
+        self.board_title_to("sh runs ls")
         t = self.term_open([0, 0.2, 0], width=9.0, rows=4)
         self.term_cmd(t, "sudo tools/pfstat -- sh -c 'ls -R /usr/include >/dev/null'")
         self.term_out(t, ["Minor page faults   258   differs by -135 vs getrusage()"], color=RED)
         self.term_cmd(t, "sudo tools/pfstat -f -- sh -c 'ls -R /usr/include >/dev/null'")
         self.term_out(t, ["Minor page faults   390   match vs wait4(), waited descendants only"], color=GREEN)
-        self.cap("E8 · sh runs ls as a child: 258 alone, 390 with -f, matching wait4().", 2)
+        self.cap("sh runs ls as a child: 258 alone, 390 with -f, matching wait4().", 2)
         self.play(self.term_close(t))
 
         # F7 (e8d, e8e): gcc's own faults vs getrusage(), which also counts the children it waited for
@@ -1069,7 +1069,7 @@ class Story(m.ThreeDScene):
             z = h(mb) if mb else 0.0
             grid.append(m.Line([-4.0, 0.85, z], [4.0, 0.85, z], color=MUTED, stroke_width=1, stroke_opacity=0.5))
             grid.append(m.Text(f"{mb} MB", font_size=18, color=MUTED).rotate(m.PI / 2, axis=m.RIGHT).move_to([-4.6, 0.85, z]))
-        legend = m.VGroup(m.Text("E7 · address space", font_size=22, color=BLUE), m.Text("RAM in use", font_size=22, color=GOLD)
+        legend = m.VGroup(m.Text("address space", font_size=22, color=BLUE), m.Text("RAM in use", font_size=22, color=GOLD)
                           ).arrange(m.RIGHT, buff=0.6).to_corner(m.UR, buff=0.4)
         self.pin(legend)
         self.move_camera(phi=62 * m.DEGREES, theta=-70 * m.DEGREES, frame_center=[0, -1.3, 1.0], run_time=beats(2))  # lift the bars clear of the summary
