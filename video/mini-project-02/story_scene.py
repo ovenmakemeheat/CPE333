@@ -20,7 +20,7 @@ ASSETS = Path(__file__).resolve().parent / "assets"  # credits: assets/SOURCES.m
 INK, MUTED = "#EAF0F7", "#8DA2BA"
 BLUE, GOLD, GREEN, RED, GREY = "#4DA3FF", "#F5B841", "#5BD19A", "#FF6B6B", "#6B7A90"
 PANEL, BAND = "#121C2F", "#05080F"
-B = 0.54  # one beat (~111 BPM); change this alone to retime, keep the film >= 7 min
+B = 0.46  # one beat (~130 BPM); change this alone to retime, keep the film >= 7 min
 BAR = 4 * B
 RIBBON_Y, BAND_Y, CAPTION_Y = 1.25, -2.0, -3.4
 
@@ -31,6 +31,13 @@ REGIONS = [
     ("anon", 48), ("file", 156), *[("file", 4)] * 10, ("file", 28), ("file", 4),
     ("anon", 8), ("special", 8), ("special", 4), ("file", 8), ("file", 8), ("stack", 132),
 ]
+MEMBERS = [  # order as on the report cover
+    ("67070501003", "Guntee Doungmanee"), ("67070501016", "Drarun Yookphan"),
+    ("67070501027", "Natthawat Primsirikunawut"), ("67070501037", "Rattathamnoon Buranapattana"),
+    ("67070501042", "Wisit Suwannao"), ("67070501045", "Supawit Marayat"),
+    ("67070501067", "Polwarit Watthanahemmarat"),
+]
+GROUP = "Ta Nai Tum Chuoy Soo"
 KIND_COLOR = {"file": BLUE, "anon": GOLD, "heap": GREEN, "stack": GREEN, "special": GREY}
 
 
@@ -81,12 +88,12 @@ class Story(m.ThreeDScene):
 
     def band_in(self):
         if not self.band_on:
-            self.play(m.FadeIn(self.band), m.Create(self.band_edge), m.FadeIn(self.band_lab), run_time=beats(2))
+            self.play(m.FadeIn(self.band), m.Create(self.band_edge), m.FadeIn(self.band_lab), self.tux.animate.move_to(self.TUX_BAND), run_time=beats(2))
             self.band_on = True
 
     def band_out(self):
         if self.band_on:
-            self.play(m.FadeOut(self.band), m.FadeOut(self.band_edge), m.FadeOut(self.band_lab), run_time=beats(2))
+            self.play(m.FadeOut(self.band), m.FadeOut(self.band_edge), m.FadeOut(self.band_lab), self.tux.animate.move_to(self.TUX_DOCK), run_time=beats(2))
             self.band_on = False
 
     # ---- appearing and leaving: text is written, shapes fade ------------------
@@ -175,9 +182,10 @@ class Story(m.ThreeDScene):
     def build_world(self):
         self.band = m.Rectangle(width=14.4, height=1.6, stroke_width=0, fill_color=BAND, fill_opacity=1).move_to([0, BAND_Y, 0])
         self.band_edge = m.Line([-7.2, BAND_Y + 0.8, 0], [7.2, BAND_Y + 0.8, 0], color=BLUE, stroke_width=1.5, stroke_opacity=0.5)
-        tux = m.ImageMobject(str(ASSETS / "tux" / "Tux-on-disc.png")).scale_to_fit_height(0.45).move_to([-6.5, BAND_Y + 0.45, 0])
-        self.band_lab = m.Group(tux, m.Text("inside Linux (the kernel)", font_size=18, color=BLUE).move_to([-4.85, BAND_Y + 0.45, 0]))
-        self.pin(self.band, self.band_edge, self.band_lab)  # the kernel band never tilts with the camera
+        self.TUX_DOCK, self.TUX_BAND = [6.65, -3.55, 0], [-6.5, BAND_Y + 0.45, 0]
+        self.tux = m.ImageMobject(str(ASSETS / "tux" / "Tux-on-disc.png")).scale_to_fit_height(0.45).move_to(self.TUX_DOCK)
+        self.pin(self.tux)  # always on screen: docked bottom right, or inside the kernel band
+        self.band_lab = m.Text("inside Linux (the kernel)", font_size=18, color=BLUE).move_to([-4.85, BAND_Y + 0.45, 0])
         self.band_on = False
 
     def scoreboard(self, title: str):
@@ -230,9 +238,16 @@ class Story(m.ThreeDScene):
     # ---- Act 0 · plain-words opening -------------------------------------------
 
     def opening(self):
-        title = m.Text("Where the Memory Goes", font_size=60, color=INK)
-        self.play(m.Write(title), run_time=beats(8))
-        self.play(self.hide(title, run_time=beats(4)))
+        title = m.Text("Where the Memory Goes", font_size=60, color=INK).move_to([0, 2.2, 0])
+        sub = m.Text("CPE333 Mini-Project 2 · pfcount / pfstat / faultgen", font_size=24, color=MUTED).next_to(title, m.DOWN, buff=0.25)
+        grp = m.Text(f"Group: {GROUP}", font_size=30, color=GOLD).move_to([0, 0.75, 0])
+        names = m.VGroup(*[m.Text(f"{sid}  {n}", font_size=19, color=INK) for sid, n in MEMBERS])
+        names.arrange(m.DOWN, buff=0.1).next_to(grp, m.DOWN, buff=0.4)
+        self.play(m.Write(title), run_time=beats(4))
+        self.play(self.show(sub, grp, run_time=beats(3)))
+        self.play(m.LaggedStart(*[m.Write(n) for n in names], lag_ratio=0.35), run_time=beats(6))
+        self.wait(beats(4))
+        self.play(self.hide(title, sub, grp, names, run_time=beats(3)))
         pages = m.VGroup(*[m.Square(0.9, color=MUTED, stroke_width=2, fill_color=GOLD, fill_opacity=0) for _ in range(8)])
         pages.arrange(m.RIGHT, buff=0.3).move_to([0, 0.4, 0])
         self.play(m.LaggedStart(*[m.Create(p) for p in pages], lag_ratio=1), run_time=beats(8))
@@ -266,7 +281,16 @@ class Story(m.ThreeDScene):
         self.ribbon_lab = m.Text("sleep · its memory, one block per region", font_size=20, color=MUTED).move_to([-3.2, RIBBON_Y + 0.6, 0])
         self.play(m.LaggedStart(*[m.FadeIn(b, shift=m.UP * 0.2) for b in self.ribbon], lag_ratio=0.25),
                   self.show(self.ribbon_lab), run_time=beats(8))
+        key = m.VGroup(*[m.VGroup(m.Square(0.22, fill_color=c, fill_opacity=0.9, stroke_width=0), m.Text(t, font_size=18, color=MUTED)).arrange(m.RIGHT, buff=0.12)
+                         for t, c in [("file-backed", BLUE), ("anonymous", GOLD), ("heap / stack", GREEN), ("vdso / vvar", GREY)]])
+        key.arrange(m.RIGHT, buff=0.5).move_to([0, RIBBON_Y - 0.75, 0])
+        note = m.Text("width: log of size", font_size=18, color=MUTED).next_to(key, m.DOWN, buff=0.2)
+        self.play(self.show(key, note, run_time=beats(3)))
+        self.play(m.FadeIn(self.tux), run_time=beats(1))
         self.cap("sleep's address space: 30 VMAs, in address order.", 3)
+        self.key = m.VGroup(key, note)
+        self.pin(self.key)  # docked legend stays flat and on screen while the ribbon is
+        self.play(self.key.animate.scale(0.8).to_corner(m.UL, buff=0.35).shift(m.DOWN * 0.45), run_time=beats(2))
 
     # ---- Act 3 · background: what a fault is (REPORT §2) -------------------------
 
@@ -300,15 +324,38 @@ class Story(m.ThreeDScene):
         t1, tr1 = self.token([quick.get_x(), 1.0, 0], GREEN)
         t2, tr2 = self.token([slow.get_x(), 1.0, 0], RED)
         disk = m.ImageMobject(str(ASSETS / "disk" / "Hard_disk_platters_and_head-1920px.jpg")).scale_to_fit_height(0.9).move_to([5.6, BAND_Y - 0.15, 0])
-        self.play(m.FadeIn(disk), t1.animate.move_to([quick.get_x(), BAND_Y, 0]), t2.animate.move_to([slow.get_x(), BAND_Y, 0]), run_time=beats(2))
+        cache = m.RoundedRectangle(corner_radius=0.08, width=2.2, height=0.9, stroke_color=BLUE, stroke_width=1.5,
+                                   fill_color=PANEL, fill_opacity=0.9).move_to([2.4, BAND_Y - 0.1, 0])
+        cache_lab = m.Text("page cache", font_size=18, color=BLUE).move_to(cache)
+        self.play(m.FadeIn(disk), m.FadeIn(cache), self.show(cache_lab, run_time=beats(2)), run_time=beats(2))
+        self.cap("The kernel first looks in the page cache, already in RAM.", 2)
+        self.play(t1.animate.move_to(cache.get_center() + m.LEFT * 0.5), t2.animate.move_to(cache.get_center() + m.RIGHT * 0.5), run_time=beats(2))
+        self.play(m.Flash(t1, color=GREEN), m.Flash(t2, color=RED), run_time=beats(1))  # found / not found
         self.play(t1.animate.move_to(quick.get_center()), quick.animate.set_fill(GREEN, opacity=0.9),
                   t2.animate.move_to(disk.get_center()), run_time=beats(2))
-        self.play(m.FadeOut(t1), run_time=beats(2))
+        self.play(m.FadeOut(t1), run_time=beats(1))
         self.wait(beats(2))  # the slow one is still waiting on the disk
         self.play(t2.animate.move_to(slow.get_center()), slow.animate.set_fill(RED, opacity=0.9), run_time=beats(2))
-        self.play(m.FadeOut(t2), run_time=beats(2))
+        self.play(m.FadeOut(t2), run_time=beats(1))
         self.remove(tr1, tr2)
-        self.cap("Green: minor, no disk. Red: major, the program waited for the disk.", 3)
+        self.cap("Found: minor. Not found: read from disk first, a major fault.", 3)
+        self.play(m.FadeOut(cache), self.hide(cache_lab), run_time=beats(1))
+
+        # what the difference costs: same scale, typical orders of magnitude
+        self.play(m.FadeOut(disk), run_time=beats(1))
+        self.band_out()  # the band is shown only while a fault is inside it; no camera tilt happens while it is up
+        labs = m.VGroup(*[m.Text(t, font_size=20, color=c) for t, c in [("minor  ~1 µs", GREEN), ("major  ~1 ms (SSD)", RED)]])
+        labs.arrange(m.DOWN, buff=0.35, aligned_edge=m.LEFT).move_to([-3.2, -1.5, 0])
+        x0 = labs.get_right()[0] + 0.4
+        bars = [m.Rectangle(width=w, height=0.3, stroke_width=0, fill_color=c, fill_opacity=0.9).move_to([x0 + w / 2, l.get_y(), 0])
+                for l, c, w in zip(labs, (GREEN, RED), (0.02, 6.0))]
+        rows = m.VGroup(*[m.VGroup(l, b) for l, b in zip(labs, bars)])
+        for b in bars:
+            b.stretch(0.001, 0, about_edge=m.LEFT)
+        self.play(self.show(rows[0][0], rows[1][0], run_time=beats(2)), *[m.FadeIn(b) for b in bars], run_time=beats(2))
+        self.play(*[b.animate.stretch(1000, 0, about_edge=m.LEFT) for b in bars], run_time=beats(4))
+        self.cap("Typical cost: a major fault is about a thousand times slower.", 3)
+        self.play(self.hide(rows))
 
         # the kernel's own rule, line by line
         rule = self.code([
@@ -318,7 +365,7 @@ class Story(m.ThreeDScene):
         ], [0, 0.3, 0], size=20)
         notes = [m.Text(t, font_size=18, color=c) for t, c in
                  [("retried: counted once, later", MUTED), ("failed: not counted", MUTED), ("needed I/O, or a retry: major", RED)]]
-        self.play(self.hide(big, start, end, cells), m.FadeOut(disk), self.grow(rule[0]), run_time=beats(4))
+        self.play(self.hide(big, start, end, cells), self.grow(rule[0]), run_time=beats(4))
         self.band_out()
         for i, note in enumerate(notes):
             note.next_to(rule, m.DOWN, buff=0.25 + 0.3 * i)
@@ -391,7 +438,7 @@ class Story(m.ThreeDScene):
         gate = m.Rectangle(width=0.18, height=1.3, stroke_width=0, fill_color=GOLD, fill_opacity=0.8).move_to([-2.4, BAND_Y, 0])
         gate_lab = m.Text("probe", font_size=18, color=GOLD).next_to(gate, m.LEFT, buff=0.12)
         wells = []
-        for i, (t, c) in enumerate([("minor · anon", GREEN), ("minor · file", GREEN), ("major · anon", RED), ("major · file", RED)]):
+        for i, (t, c) in enumerate([("minor", GREEN), ("major", RED), ("anon", GOLD), ("file-backed", BLUE)]):
             x = -0.6 + 1.85 * i
             frame = m.RoundedRectangle(corner_radius=0.08, width=1.7, height=1.2, stroke_color=c, stroke_width=1.5,
                                        fill_color=PANEL, fill_opacity=0.9).move_to([x, BAND_Y, 0])
@@ -417,12 +464,14 @@ class Story(m.ThreeDScene):
         self.play(m.FadeOut(tok), run_time=beats(1))
         self.remove(trail)
         self.cap("Ours stop at the gate and are sorted: minor or major, anon or file.", 3)
-        self.board_title_to("faultgen (E7 run)")
+        self.board_title_to("E2 · faultgen anon:64")
         for k in self.vals:
             self.vals[k].set_value(-1)
-        self.play(wells[0][2].animate.set_value(16452), wells[1][2].animate.set_value(78), wells[3][2].animate.set_value(8193),
-                  self.vals["minor"].animate.set_value(16530), self.vals["major"].animate.set_value(8193), run_time=beats(8))
-        self.cap("The E7 run: 16,530 minor and 8,193 major, as getrusage() reports.", 3)
+        self.play(wells[0][2].animate.set_value(16538), wells[1][2].animate.set_value(1), wells[2][2].animate.set_value(16462),
+                  wells[3][2].animate.set_value(77), self.vals["minor"].animate.set_value(16538), self.vals["major"].animate.set_value(1),
+                  run_time=beats(8))
+        self.board_tick("minor", "major")
+        self.cap("E2: 16,538 minor and 1 major, exactly what getrusage() reports.", 3)
         self.cap("Lifetime totals add live and exited threads, read under a lock like /proc.", 3)
         frozen = [self.freeze(n_, lambda w=w: m.Text(f"{w[2].get_value():,.0f}", font_size=22, color=w[3]).move_to([w[4], BAND_Y - 0.15, 0]))
                   for n_, w in zip(well_nums, wells)]
@@ -452,7 +501,7 @@ class Story(m.ThreeDScene):
         cmd_words = "$ sudo tools/pfstat -w 0.5 -- tests/faultgen anon:64 file:big.bin free".split(" ")
         cmd = m.VGroup(*[m.Text(w, font_size=18, color=GREEN) for w in cmd_words]).arrange(m.RIGHT, buff=0.12)
         cmd.move_to(term).align_to(term, m.UP).shift(m.DOWN * 0.25 + m.RIGHT * 0.05)
-        self.board_title_to("faultgen (E7 run)")
+        self.board_title_to("demo run · PID 2508")
         self.play(m.FadeIn(term), run_time=beats(2))
         self.play(m.LaggedStart(*[m.Write(w) for w in cmd], lag_ratio=1), run_time=beats(len(cmd)))
 
@@ -461,9 +510,21 @@ class Story(m.ThreeDScene):
         fg_lab = m.Text("faultgen · its memory", font_size=20, color=MUTED).move_to(self.ribbon_lab)
         self.play(m.ReplacementTransform(self.ribbon, fg), m.ReplacementTransform(self.ribbon_lab, fg_lab), run_time=BAR)
         self.ribbon, self.ribbon_lab = fg, fg_lab
-        for k, v in [("regions", 16), ("size", 2.2 * 1024), ("minor", 570), ("major", 1)]:
+        # run mode: the child stops itself, pfstat reads a baseline, then lets it exec
+        child = m.Circle(radius=0.32, color=GOLD, fill_color=GOLD, fill_opacity=0.25).move_to([3.6, 0.4, 0])
+        c_lab = m.Text("child", font_size=18, color=GOLD).next_to(child, m.DOWN, buff=0.1)
+        stop = m.Text("SIGSTOP", font_size=20, color=RED).next_to(child, m.UP, buff=0.12)
+        self.play(m.GrowFromCenter(child), self.show(c_lab, run_time=beats(1)), run_time=beats(1))
+        self.play(self.show(stop, run_time=beats(1)), child.animate.set_fill(opacity=0.06), run_time=beats(1))
+        base = m.Text("baseline 468", font_size=22, color=MUTED).move_to([3.6, -0.6, 0])
+        self.play(m.TransformFromCopy(child, base), run_time=beats(1))
+        self.play(base.animate.scale(0.7).move_to([5.6, -0.9, 0]).set_opacity(0.4), run_time=beats(1))
+        go = m.Text("SIGCONT, then exec", font_size=20, color=GREEN).move_to(stop)
+        self.play(m.ReplacementTransform(stop, go), child.animate.set_fill(opacity=0.6), run_time=beats(1))
+        for k, v in [("regions", 16), ("size", 2.2 * 1024), ("minor", 0), ("major", 0)]:
             self.vals[k].set_value(v)
-        self.cap("Run mode: the tool counts a program from its very first instruction.", 3)
+        self.cap("Run mode: the child pauses, pfstat records 468 faults as baseline, then lets it run.", 3)
+        self.play(m.FadeOut(child), self.hide(c_lab, go, base), run_time=beats(1))
 
         # anon:64 — the block appears first, the RAM follows
         anon = m.Rectangle(width=3.2, height=0.6, stroke_color=GOLD, stroke_width=2, fill_color=GOLD, fill_opacity=0)
@@ -474,8 +535,8 @@ class Story(m.ThreeDScene):
         cells = m.VGroup(*[m.Rectangle(width=3.2 / 16, height=0.6, stroke_width=0, fill_color=GOLD, fill_opacity=0.9) for _ in range(16)])
         cells.arrange(m.RIGHT, buff=0).move_to(anon)
         self.play(m.LaggedStart(*[m.FadeIn(c) for c in cells], lag_ratio=1),
-                  self.vals["minor"].animate.set_value(16954), run_time=beats(8), rate_func=m.linear)
-        self.cap("Touch every page: 16,384 minor faults, and now it is in RAM.", 3)
+                  self.vals["minor"].animate.set_value(16384), run_time=beats(8), rate_func=m.linear)
+        self.cap("Touch every page: about 16,384 minor faults, one per 4 KiB page.", 3)
 
         # file: a cold file, one disk read per page
         self.band_in()
@@ -488,19 +549,19 @@ class Story(m.ThreeDScene):
         drops = [m.Dot(c.get_center(), radius=0.06, color=RED) for c in fcells]
         self.play(m.LaggedStart(*[m.AnimationGroup(m.FadeIn(c), d.animate.move_to(disk.get_center()).set_opacity(0))
                                   for c, d in zip(fcells, drops)], lag_ratio=1),
-                  self.vals["major"].animate.set_value(8193), run_time=beats(8), rate_func=m.linear)
+                  self.vals["major"].animate.set_value(8193), self.vals["minor"].animate.set_value(16521), run_time=beats(8), rate_func=m.linear)
         self.cap("Read a cold 32 MB file: one trip to the disk per page. 8,193 major.", 3)
 
         # free: both blocks leave, the map shrinks back
         self.play(m.FadeOut(anon, cells, fil, fcells, *drops, shift=m.UP * 0.4),
                   self.vals["regions"].animate.set_value(16), self.vals["size"].animate.set_value(2.2 * 1024), run_time=BAR)
         out = m.VGroup(*[m.Text(t, font_size=18, color=c) for t, c in [
-            ("Minor page faults   16,530   match vs getrusage()", INK),
+            ("Minor page faults   16,521   match vs getrusage()", INK),
             ("Major page faults    8,193   match vs getrusage()", INK)]]).arrange(m.DOWN, buff=0.12, aligned_edge=m.LEFT)
         out.next_to(cmd, m.DOWN, buff=0.35).align_to(cmd, m.LEFT)
         self.play(self.show(out), run_time=BAR)
         ticks = self.board_tick("minor", "major")
-        self.cap("Freed: back to 16 regions. Both fault counts match getrusage().", 3)
+        self.cap("Freed: back to 16 regions. 16,521 and 8,193 match getrusage() after the baseline.", 3)
         self.play(self.hide(term, cmd, out, *ticks), m.FadeOut(disk))
         self.band_out()
 
@@ -508,15 +569,15 @@ class Story(m.ThreeDScene):
 
     def experiments(self):
         """Four experiments race on one floor: each faulted tile rises; the counts end side by side."""
-        self.play(m.FadeOut(self.ribbon), self.hide(self.ribbon_lab), run_time=beats(2))
-        self.board_title_to("E3-E6 · faultgen")
+        self.play(m.FadeOut(self.ribbon), self.hide(self.ribbon_lab), m.FadeOut(self.key), run_time=beats(2))
         for k in self.vals:
             self.vals[k].set_value(-1)
+        self.board_title_to("E3-E6 · faultgen")
         rows = [  # (label, tiles, final count, unit, colour, y)
             ("E3 cold, random", 64, 8192, "major", RED, 1.5),
-            ("E5 cold, sequential", 64, 1, "major", RED, 0.5),
-            ("E4 warm cache", 64, 511, "minor", GREEN, -0.5),
-            ("E6 THP 64 MB", 32, 35, "minor", GOLD, -1.5),
+            ("E5 cold, readahead", 64, 2, "major", RED, 0.5),
+            ("E4 warm cache", 64, 652, "minor", GREEN, -0.5),
+            ("E6 THP 64 MiB", 32, 188, "minor", GOLD, -1.5),
         ]
         floor, counts, labels, nums = [], [], [], []
         for lab, n, _, unit, col, y in rows:
@@ -541,8 +602,8 @@ class Story(m.ThreeDScene):
         e6 = m.LaggedStart(*[t.animate.set_fill(GOLD, opacity=0.9).shift(lift) for t in floor[3]], lag_ratio=0.6)
         self.play(e3, e5, e4, e6, *[c.animate.set_value(r[2]) for c, r in zip(counts, rows)],
                   run_time=beats(16), rate_func=m.linear)
-        self.cap("Same 32 MB file: random cold reads fault on every page, readahead on one.", 3)
-        self.cap("Page cache plus fault-around: 511. Huge pages: 35 faults for 64 MB.", 3)
+        self.cap("Same 32 MiB file: cold random reads fault on every page (8,193); readahead needs 2.", 3)
+        self.cap("Warm cache + fault-around: 652. THP: 188 minor vs 16,538 for the same 64 MiB in E2.", 3)
         self.begin_ambient_camera_rotation(rate=0.04)
         self.wait(BAR)
         self.stop_ambient_camera_rotation()
@@ -554,45 +615,145 @@ class Story(m.ThreeDScene):
     # ---- Act 8 · checks and findings (REPORT §6.1, §7) --------------------------------
 
     def checks(self):
-        self.board_title_to("process: sleep")
-        for k, v in [("regions", 30), ("size", 5.6 * 1024), ("minor", 104), ("major", 0)]:
-            self.vals[k].set_value(v)
-        self.ribbon = ribbon_blocks(REGIONS)
-        self.play(m.FadeIn(self.ribbon), run_time=beats(2))
-        self.board_tick("regions", "size", "minor", "major")
-        self.cap("E1 · all four numbers match /proc, for sleep and for PID 1.", 3)
-        self.band_in()
+        # E1 (e1a, e1b): every number pfstat prints, beside the number Linux prints for it
+        for k in self.vals:
+            self.vals[k].set_value(-1)
+        self.board_title_to("E1 · pfstat vs /proc")
+        self.cap("E1 · left: what pfstat prints. Right: what Linux itself prints.", 2)
+        cols = [("", -4.2), ("sleep", -0.9), ("PID 1 (systemd)", 2.9)]
+        rows = [("regions", "/proc/<pid>/maps lines", "30", "113"),
+                ("address space", "VmSize", "5.6 MB", "21.9 MB"),
+                ("minor faults", "/proc/<pid>/stat", "106", "12,986"),
+                ("major faults", "/proc/<pid>/stat", "0", "94")]
+        head = [m.Text(t, font_size=22, color=MUTED).move_to([x, 1.9, 0]) for t, x in cols[1:]]
+        sub = [m.Text(t, font_size=16, color=c).move_to([x + dx, 1.55, 0]) for x in (cols[1][1], cols[2][1])
+               for t, c, dx in (("pfstat", INK, -0.7), ("/proc", MUTED, 0.7))]
+        self.play(self.show(*head, *sub, run_time=beats(2)))
+        lines = []
+        for i, (name, src, a_, b_) in enumerate(rows):
+            y = 1.2 - 0.75 * i
+            lab = m.VGroup(m.Text(name, font_size=22, color=INK), m.Text(src, font_size=16, color=MUTED)).arrange(m.DOWN, buff=0.06, aligned_edge=m.LEFT)
+            lab.move_to([cols[0][1], y, 0]).align_to([-5.4, 0, 0], m.LEFT)
+            cells = []
+            for v, x in ((a_, cols[1][1]), (b_, cols[2][1])):
+                ours = m.Text(v, font_size=24, color=INK).move_to([x - 0.7, y, 0])
+                theirs = m.Text(v, font_size=24, color=MUTED).move_to([x + 0.7, y, 0])
+                cells.append((ours, theirs))
+            self.play(self.show(lab, *[c[0] for c in cells], run_time=beats(2)))  # pfstat writes its number...
+            self.play(*[m.FadeIn(c[1], shift=m.LEFT * 0.3) for c in cells], run_time=beats(1))  # ...Linux's lands beside it
+            self.play(*[c[0].animate.set_color(GREEN) for c in cells], *[c[1].animate.set_color(GREEN) for c in cells], run_time=beats(1))
+            lines.append(m.VGroup(lab, *[x for c in cells for x in c]))
+        self.cap("E1 · every number matches what Linux itself reports, for sleep and for PID 1.", 3)
+        self.play(self.hide(*head, *sub, *lines))
 
-        # F3: the tracepoint fires too early to know the result
-        tok, trail = self.token([-6.0, BAND_Y, 0])
-        early = m.Rectangle(width=0.14, height=1.2, stroke_width=0, fill_color=RED, fill_opacity=0.9).move_to([-3.0, BAND_Y, 0])
-        late = m.Rectangle(width=0.14, height=1.2, stroke_width=0, fill_color=GREEN, fill_opacity=0.9).move_to([3.0, BAND_Y, 0])
-        e_lab = m.Text("tracepoint: fires before, result unknown", font_size=18, color=RED).move_to([-3.0, BAND_Y + 1.05, 0])
-        l_lab = m.Text("our probe: fires after, sees minor/major", font_size=18, color=GREEN).move_to([3.0, BAND_Y + 1.05, 0])
-        self.play(m.FadeIn(early, late), self.show(e_lab, l_lab), run_time=BAR)
-        self.play(tok.animate.move_to([-0.2, BAND_Y, 0]), run_time=beats(3))
-        self.play(tok.animate.set_fill(GREEN), m.Flash([-0.2, BAND_Y, 0], color=GOLD), run_time=beats(1))
-        self.play(tok.animate.move_to([6.0, BAND_Y, 0]), run_time=beats(4))
-        self.remove(trail, tok)
-        self.cap("The suggested tracepoint fires before the result, and only on x86.", 3)
-        self.play(self.hide(early, late, e_lab, l_lab))
+        # F3 (REPORT §7): the life of one fault inside handle_mm_fault(), and where each probe can look
+        self.board_title_to("F3 · where to probe")
+        self.band_in()
+        y = BAND_Y
+        track = m.Line([-4.4, y, 0], [5.4, y, 0], color=MUTED, stroke_width=2)
+        enter = m.Text("enter handle_mm_fault()", font_size=16, color=MUTED).move_to([-3.3, y - 0.6, 0])
+        leave = m.Text("return: result known", font_size=16, color=MUTED).move_to([4.2, y - 0.6, 0])
+        tp = m.Rectangle(width=0.12, height=0.7, stroke_width=0, fill_color=RED, fill_opacity=0.9).move_to([-3.3, y, 0])
+        kp = m.Rectangle(width=0.12, height=0.7, stroke_width=0, fill_color=GREEN, fill_opacity=0.9).move_to([4.2, y, 0])
+        tp_lab = m.VGroup(m.Text("tracepoint page_fault_user", font_size=18, color=RED),
+                          m.Text("x86 only · our VM is arm64", font_size=16, color=RED)).arrange(m.DOWN, buff=0.06).move_to([-3.3, y + 1.15, 0])
+        kp_lab = m.VGroup(m.Text("our kretprobe", font_size=18, color=GREEN),
+                          m.Text("any architecture", font_size=16, color=GREEN)).arrange(m.DOWN, buff=0.06).move_to([4.2, y + 1.15, 0])
+        self.play(m.Create(track), m.FadeIn(tp), m.FadeIn(kp), self.show(enter, leave, tp_lab, kp_lab, run_time=beats(3)), run_time=beats(3))
+        tok, trail = self.token([-4.6, y, 0], GREY)
+        self.play(tok.animate.move_to(tp.get_center()), run_time=beats(2))
+        q = m.Text("minor or major?", font_size=20, color=RED).next_to(tp_lab, m.UP, buff=0.12)
+        self.play(self.show(q, run_time=beats(2)), m.Flash(tp, color=RED), run_time=beats(2))  # it fires before the work: no answer yet
+        self.cap("F3 · the suggested tracepoint fires on entry, before the kernel knows the answer.", 3)
+        work = m.Rectangle(width=4.0, height=0.4, stroke_color=BLUE, stroke_width=1, fill_color=BLUE, fill_opacity=0.15).move_to([0.45, y, 0])
+        work_lab = m.Text("kernel handles it: page cache or disk", font_size=16, color=BLUE).next_to(work, m.DOWN, buff=0.08)
+        self.play(m.FadeIn(work), self.show(work_lab, run_time=beats(1)), tok.animate.move_to(work.get_center()), run_time=beats(2))
+        self.play(tok.animate.set_fill(GREEN), m.Flash(work, color=GREEN), run_time=beats(1))
+        self.play(tok.animate.move_to(kp.get_center()), run_time=beats(2))
+        a_ = m.Text("minor", font_size=20, color=GREEN).next_to(kp_lab, m.UP, buff=0.12)
+        self.play(self.show(a_, run_time=beats(2)), m.Flash(kp, color=GREEN), run_time=beats(2))
+        self.cap("A kretprobe fires on return, sees the result, and works on arm64 too.", 3)
+        self.remove(trail)
+        self.play(m.FadeOut(tok), self.hide(track, tp, kp, enter, leave, tp_lab, kp_lab, q, work, work_lab, a_))
         self.band_out()
 
-        # F7: children
-        self.play(m.FadeOut(self.ribbon), run_time=beats(2))
-        parent = ribbon_blocks(REGIONS[:8], y=1.3, width=2.6, height=0.4)
-        kids = [ribbon_blocks(REGIONS[:10], y=-0.1, width=2.6, height=0.4).shift(m.RIGHT * x) for x in (-4.8, -1.6, 1.6, 4.8)]
-        names = [m.Text(t, font_size=18, color=MUTED).next_to(g, m.UP, buff=0.08) for t, g in
-                 zip(["gcc", "cc1", "as", "collect2", "ld"], [parent, *kids])]
-        self.play(m.FadeIn(parent), *[m.FadeIn(k) for k in kids], self.show(*names), run_time=BAR)
+        # post-merge regression suite (report Table 8): every check runs at once and lands on PASS
+        self.board_title_to("post-merge regression")
+        cards = [("retarget", "A's faults never reach B", None),
+                 ("PID reuse", "PID 26873 reused, old counters frozen", 26873),
+                 ("thread exit", "snapshots complete", 100),
+                 ("lifetime reads", "never decreased", 20000),
+                 ("unload in fault", "sessions released", None),
+                 ("SIGCHLD ignored", "target reset to idle", None)]
+        grid, nums = [], []
+        for i, (t, d, n) in enumerate(cards):
+            x, y = -3.9 + 3.9 * (i % 3), 1.0 - 1.6 * (i // 3)
+            box = m.RoundedRectangle(corner_radius=0.1, width=3.6, height=1.35, stroke_color=MUTED, stroke_width=1.2,
+                                     fill_color=PANEL, fill_opacity=0.95).move_to([x, y, 0])
+            head = m.Text(t, font_size=22, color=INK).move_to([x, y + 0.35, 0])
+            desc = m.Text(d, font_size=15, color=MUTED).move_to([x, y - 0.4, 0])
+            grid.append(m.VGroup(box, head, desc))
+            if n:
+                tr = m.ValueTracker(0)
+                unit = {26873: "", 100: " runs", 20000: " reads"}[n]
+                fmt = (lambda v: f"PID {v:.0f}") if n == 26873 else (lambda v, unit=unit: f"{v:,.0f}{unit}")
+                nums.append((tr, n, m.always_redraw(lambda tr=tr, x=x, y=y, fmt=fmt: m.Text(fmt(tr.get_value()), font_size=20, color=GOLD).move_to([x, y - 0.03, 0]))))
+        self.play(m.LaggedStart(*[m.FadeIn(g, shift=m.UP * 0.2) for g in grid], lag_ratio=0.15), run_time=beats(3))
+        self.add(*[n_[2] for n_ in nums])
+        self.play(*[tr.animate.set_value(n) for tr, n, _ in nums], run_time=beats(4), rate_func=m.linear)
+        self.play(m.LaggedStart(*[g[0].animate.set_stroke(GREEN, width=2.5) for g in grid], lag_ratio=0.12),
+                  *[m.Flash(g[0].get_corner(m.UR) + [-0.25, -0.25, 0], color=GREEN, flash_radius=0.25) for g in grid], run_time=beats(3))
+        self.cap("Six lifecycle and concurrency checks after merge: all passed.", 2)
+        self.play(*[m.FadeOut(g, shift=m.DOWN * 0.2) for g in grid], *[m.FadeOut(n_[2]) for n_ in nums], run_time=beats(2))
+
+        # F7 (e8d, e8e): gcc's own faults vs getrusage(), which also counts the children it waited for
+        for k in self.vals:
+            self.vals[k].set_value(-1)
         self.board_title_to("gcc -O2 faultgen.c")
         for k, v in [("regions", 21), ("size", 6.6 * 1024), ("minor", 0), ("major", 0)]:
             self.vals[k].set_value(v)
-        self.play(self.vals["minor"].animate.set_value(304), m.Indicate(parent), run_time=beats(4))
-        self.cap("F7 · gcc forks cc1, as, collect2, ld. Counting gcc alone: 304.", 3)
-        self.play(*[m.Indicate(k) for k in kids], self.vals["minor"].animate.set_value(6001), run_time=beats(8))
-        self.cap("With -f the children count too: 6,001. Now it matches getrusage().", 3)
-        self.play(self.hide(parent, *kids, *names))
+        parent = ribbon_blocks(REGIONS[:8], y=1.6, width=2.6, height=0.4)
+        p_lab = m.Text("gcc", font_size=20, color=INK).next_to(parent, m.UP, buff=0.1)
+        self.play(m.FadeIn(parent, shift=m.UP * 0.2), self.show(p_lab, run_time=beats(2)), run_time=beats(2))
+
+        # two bars on one scale: what Linux reports, what we counted
+        W, X0, total = 10.0, -5.0, 5987  # 287 + 5,700
+        ref = m.Rectangle(width=W, height=0.42, stroke_color=MUTED, stroke_width=1.5, fill_opacity=0).move_to([X0 + W / 2, -0.9, 0])
+        ref_lab = m.Text("getrusage(): 5,987", font_size=20, color=MUTED).next_to(ref, m.UP, buff=0.1, aligned_edge=m.LEFT)
+        ours = m.Rectangle(width=W * 287 / total, height=0.42, stroke_width=0, fill_color=GOLD, fill_opacity=0.95)
+        ours.move_to([X0 + ours.width / 2, -0.9, 0])
+        ours_lab = m.Text("pfstat: 287", font_size=20, color=GOLD).next_to(ref, m.DOWN, buff=0.12, aligned_edge=m.LEFT)
+        gap = m.Rectangle(width=W - ours.width, height=0.42, stroke_width=0, fill_color=RED, fill_opacity=0.25)
+        gap.move_to([X0 + ours.width + gap.width / 2, -0.9, 0])
+        gap_lab = m.Text("missing 5,700", font_size=20, color=RED).move_to(gap)
+        self.play(m.Create(ref), self.show(ref_lab, run_time=beats(2)), run_time=beats(2))
+        self.play(m.GrowFromEdge(ours, m.LEFT), self.vals["minor"].animate.set_value(287), self.show(ours_lab, run_time=beats(2)), run_time=beats(2))
+        self.play(m.FadeIn(gap), self.show(gap_lab, run_time=beats(2)), run_time=beats(2))
+        self.cap("F7 · counting gcc alone gives 287: 5,700 below getrusage().", 3)
+
+        # where the rest lives: gcc forks the real workers
+        names = ["cc1", "as", "collect2", "ld"]
+        kids = [ribbon_blocks(REGIONS[:10], y=0.45, width=2.4, height=0.36).set_x(x) for x in (-4.5, -1.5, 1.5, 4.5)]
+        k_labs = [m.Text(n, font_size=18, color=MUTED).next_to(k, m.UP, buff=0.08) for n, k in zip(names, kids)]
+        for k, l in zip(kids, k_labs):  # each child splits off from the parent, one per beat
+            self.play(m.TransformFromCopy(parent, k), self.show(l, run_time=beats(1)), run_time=beats(1))
+        self.cap("The children it waits for do the work, and wait4() adds theirs in.", 3)
+
+        # -f: the probe also counts any process whose ancestor is the target
+        self.board_title_to("gcc -O2 faultgen.c  ·  pfstat -f")
+        self.play(*[k.animate.set_fill(GOLD, opacity=0.95) for k in kids], run_time=beats(1))
+        fill = m.Rectangle(width=W * 5971 / total, height=0.42, stroke_width=0, fill_color=GOLD, fill_opacity=0.95)
+        fill.move_to([X0 + fill.width / 2, -0.9, 0])
+        drops = [k.copy() for k in kids]
+        self.play(*[d.animate.scale(0.2).move_to(fill.get_center()).set_opacity(0) for d in drops],
+                  m.Transform(ours, fill), m.FadeOut(gap), self.hide(gap_lab, run_time=beats(2)),
+                  self.vals["minor"].animate.set_value(5971), run_time=beats(4))
+        self.remove(*drops)
+        ours_lab2 = m.Text("pfstat -f: 5,971 (separate run)", font_size=20, color=GREEN).move_to(ours_lab, aligned_edge=m.LEFT)
+        self.play(m.ReplacementTransform(ours_lab, ours_lab2), run_time=beats(2))
+        self.board_tick("minor")
+        self.cap("With -f the children count too: 5,971, matching wait4() for that run.", 3)
+        self.play(self.hide(parent, p_lab, *kids, *k_labs, ref, ref_lab, ours, ours_lab2))
 
     # ---- Act 9 · limits and the end (REPORT §8–9) -----------------------------------
 
@@ -613,7 +774,7 @@ class Story(m.ThreeDScene):
         self.play(self.hide(self.board_title, self.board_labels, *frozen), run_time=BAR)
         # the E7 run as a 3D timeline: x is time, blue = address space (VmSize), gold = RAM in use (RSS)
         vsize = [2.2, 66.2, 66.2, 66.2, 98.2, 98.2, 2.2, 2.2]
-        rss = [1.4, 7.9, 65.4, 65.4, 97.2, 97.2, 1.3, 1.3]
+        rss = [1.4, 2.6, 65.4, 65.4, 97.2, 97.2, 1.3, 1.3]
         steps = ["start", "anon:64", "touch", "", "file:32", "read", "free", ""]
         h = lambda mb: max(0.04, mb / 98.2 * 2.3)
 
@@ -622,11 +783,16 @@ class Story(m.ThreeDScene):
         vb = [bar(i, v, 0.5, BLUE, 0.45) for i, v in enumerate(vsize)]
         rb = [bar(i, r, -0.4, GOLD, 0.95) for i, r in enumerate(rss)]
         ticks = [m.Text(t, font_size=18, color=MUTED).move_to([-3.5 + i, -1.2, 0]) for i, t in enumerate(steps) if t]
+        grid = []
+        for mb in (0, 50, 100):
+            z = h(mb) if mb else 0.0
+            grid.append(m.Line([-4.0, 0.85, z], [4.0, 0.85, z], color=MUTED, stroke_width=1, stroke_opacity=0.5))
+            grid.append(m.Text(f"{mb} MB", font_size=18, color=MUTED).rotate(m.PI / 2, axis=m.RIGHT).move_to([-4.6, 0.85, z]))
         legend = m.VGroup(m.Text("E7 · address space", font_size=22, color=BLUE), m.Text("RAM in use", font_size=22, color=GOLD)
                           ).arrange(m.RIGHT, buff=0.6).to_corner(m.UR, buff=0.4)
         self.pin(legend)
         self.move_camera(phi=62 * m.DEGREES, theta=-70 * m.DEGREES, frame_center=[0, -1.3, 1.0], run_time=beats(2))  # lift the bars clear of the summary
-        self.play(self.show(legend, *ticks, run_time=beats(2)))
+        self.play(self.show(legend, *ticks, *grid, run_time=beats(2)))
         for i in range(len(vsize)):  # one sample per beat: VmSize jumps first, RSS catches up after the touch
             self.play(m.FadeIn(vb[i], shift=m.OUT * 0.3), m.FadeIn(rb[i], shift=m.OUT * 0.3), run_time=beats(1))
         self.cap("Mapping grows the address space at once; RAM follows only as pages fault in.", 3)
@@ -642,10 +808,13 @@ class Story(m.ThreeDScene):
         self.cap("Four numbers, each checked against Linux itself.", 3)
         self.cap("pfcount and pfstat · CPE333 Mini-Project 02", 3)
         self.stop_ambient_camera_rotation()
-        self.play(*[m.FadeOut(x) for x in vb + rb], self.hide(summary, legend, *ticks, self.caption_mob, self.tag), run_time=BAR)
+        self.play(*[m.FadeOut(x) for x in vb + rb], self.hide(summary, legend, *ticks, *grid, self.caption_mob, self.tag), m.FadeOut(self.tux), run_time=BAR)
         self.caption_mob = None
         self.move_camera(phi=0, theta=-90 * m.DEGREES, frame_center=[0, 0, 0], run_time=beats(2))
         credits = m.VGroup(*[m.Text(t, font_size=18, color=MUTED) for t in [
+            f"Group {GROUP}",
+            *[f"{sid}  {n}" for sid, n in MEMBERS],
+            "Submitted to Asst. Prof. Rajchawit Sarochawikasit · CPE333, KMUTT",
             "Images: Wikimedia Commons, see assets/SOURCES.md",
             "Hard disk: Matthew Field · Tux: Larry Ewing, Simon Budig, Garrett LeSage",
         ]]).arrange(m.DOWN, buff=0.2)
